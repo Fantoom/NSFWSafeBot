@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace NSFWSafeBot
+﻿namespace NSFWSafeBot
 {
-	class Config
-	{
-		public string token;
-	}
+    public sealed class Config
+    {
+        public string Token;
+    }
 }
