@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29613.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NSFWSafeBot", "NSFWSafeBot\NSFWSafeBot.csproj", "{A8FEF816-DA75-4682-96B6-4C571CAFB07B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A8FEF816-DA75-4682-96B6-4C571CAFB07B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8FEF816-DA75-4682-96B6-4C571CAFB07B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8FEF816-DA75-4682-96B6-4C571CAFB07B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8FEF816-DA75-4682-96B6-4C571CAFB07B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {67124EA9-1B9C-4B23-9EE3-AD0E5E3E5FC3}
+	EndGlobalSection
+EndGlobal
