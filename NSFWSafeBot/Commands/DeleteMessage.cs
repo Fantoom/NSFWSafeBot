@@ -1,23 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
-using Telegram.Bot;
+﻿using System.Threading.Tasks;
 
 namespace NSFWSafeBot.Commands
 {
-	class DeleteMessage : ICommand
-	{
+    public class DeleteMessage : ICommand
+    {
+        public string CommandName => "delete";
 
-		public string CommandName => "delete";
-
-		public async Task Execute(Telegram.Bot.Types.Message message)
-		{
-			if (message.ReplyToMessage != null)
-				await DBController.DeleteMessageByIdAsync(message.Chat.Id, message.ReplyToMessage.MessageId);
-			else
-				await BotClient.botClient.SendTextMessageAsync(message.Chat.Id, "Send delete as reply to message you want to delete");
-
-		}
-	}
+        public Task ExecuteAsync(Telegram.Bot.Types.Message message)
+        {
+            if (message.ReplyToMessage != null)
+            {
+                return DBController.DeleteMessageByIdAsync(message.Chat.Id, message.ReplyToMessage.MessageId);
+            }
+            return NsfmBot.BotClient.SendTextMessageAsync(message.Chat.Id, "Send delete as reply to message you want to delete");
+        }
+    }
 }
