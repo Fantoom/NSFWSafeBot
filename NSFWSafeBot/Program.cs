@@ -1,11 +1,5 @@
-﻿using LiteDB;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.IO;
-using Telegram.Bot;
-using Telegram.Bot.Types.InlineQueryResults;
-using NSFWSafeBot.Commands;
-using System.Linq;
 using Newtonsoft.Json;
 namespace NSFWSafeBot
 {
@@ -26,10 +20,6 @@ namespace NSFWSafeBot
 			{
 				Console.WriteLine(e.Message);
 			}
-
-			
-
-
 			while (true)
 			{
 				if (Console.ReadLine() == "!")
