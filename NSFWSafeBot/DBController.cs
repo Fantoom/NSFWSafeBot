@@ -2,6 +2,7 @@
 using NSFWSafeBot.Models;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace NSFWSafeBot
@@ -31,14 +32,21 @@ namespace NSFWSafeBot
             return Messages.Delete(message.Id);
         }
 
-        public static IEnumerable<ChatMessage> GetUserMessages(int userId)
+        public static List<ChatMessage> GetUserMessages(int userId, string query = null)
         {
-            return Messages.Find(msg => msg.UserId == userId);
+            var messages = Messages.Find(msg => msg.UserId == userId);
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                query = query.ToLower();
+                messages = messages.Where(msg => msg.Caption.ToLower().Contains(query));
+            }
+
+            return messages.ToList();
         }
 
-        public static Task<IEnumerable<ChatMessage>> GetUserMessagesAsync(int userId)
+        public static Task<List<ChatMessage>> GetUserMessagesAsync(int userId, string query = null)
         {
-            return Task.Run(() => GetUserMessages(userId));
+            return Task.Run(() => GetUserMessages(userId, query));
         }
 
         public static Task<BsonValue> AddMessageAsync(ChatMessage message)

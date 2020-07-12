@@ -9,10 +9,8 @@ using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.InlineQueryResults.Abstractions;
-using Telegram.Bot.Types.ReplyMarkups;
 
 namespace NSFWSafeBot
 {
@@ -87,22 +85,16 @@ namespace NSFWSafeBot
 
         private async void BotClient_OnMessage(object sender, MessageEventArgs e)
         {
-            if (string.IsNullOrEmpty(e.Message.Text))
+            if (string.IsNullOrEmpty(e.Message.Text) && e.Message.Photo is null)
             {
                 return;
             }
 
-            if (!IsCommand(e.Message))
+            if (!IsCommand(e.Message) && e.Message.Photo != null)
             {
-                await DBController.AddMessageAsync(new ChatMessage
-                {
-                    ChatId = e.Message.Chat.Id,
-                    MessageId = e.Message.MessageId,
-                    UserId = e.Message.From.Id,
-                    Message = e.Message
-                });
+                await DBController.AddMessageAsync(new ChatMessage(e.Message));
             }
-            else
+            else if (IsCommand(e.Message))
             {
                 var command = _commands.FirstOrDefault(x => x.CommandName == GetCommandName(e.Message));
                 if (command is null)
@@ -113,11 +105,16 @@ namespace NSFWSafeBot
 
                 await command.ExecuteAsync(e.Message);
             }
+            else
+            {
+                await BotClient.SendTextMessageAsync(e.Message.Chat.Id, "Send command or image, please");
+            }
         }
 
         private bool IsCommand(Message message)
         {
-            return message.Text.StartsWith("/");
+            return !string.IsNullOrWhiteSpace(message.Text)
+                   && message.Text.StartsWith("/");
         }
 
         private string GetCommandName(Message message)
@@ -128,61 +125,39 @@ namespace NSFWSafeBot
 
         private async void BotClient_OnInlineQuery(object sender, InlineQueryEventArgs e)
         {
-            var articles = new List<InlineQueryResultBase>();
+            IEnumerable<ChatMessage> userMessages =
+                await DBController.GetUserMessagesAsync(e.InlineQuery.From.Id, e.InlineQuery.Query);
 
-            var userMessages = await DBController.GetUserMessagesAsync(e.InlineQuery.From.Id);
-            uint resultArticleId = 0;
+            var results = new List<InlineQueryResultBase>();
+            uint resultId = 0;
             foreach (var userChatMessage in userMessages)
             {
-                var message = userChatMessage.Message;
-                var markup = GetArticleMarkup(message);
-                var newArticle = new InlineQueryResultArticle(
-                    resultArticleId.ToString(),
-                    GetArticleTitle(message),
-                    new InputTextMessageContent($"NSFW content sent by {e.InlineQuery.From.Username}"))
-                {
-                    ReplyMarkup = markup
-                };
-
-                if (userChatMessage.Message.Type == MessageType.Photo)
-                {
-                    await AddArticleThumb(newArticle, message.Photo[0]);
-                }
-                articles.Add(newArticle);
-                resultArticleId++;
+                var photo = await BotClient.GetFileAsync(userChatMessage.Photo.FileId);
+                var newArticle = new InlineQueryResultCachedPhoto(resultId.ToString(), photo.FileId);
+                results.Add(newArticle);
+                resultId++;
             }
 
-            await BotClient.AnswerInlineQueryAsync(
-             inlineQueryId: e.InlineQuery.Id,
-             results: articles,
-             isPersonal: true,
-             cacheTime: 0
-            );
-        }
-
-        private string GetArticleTitle(Message message)
-        {
-            return string.IsNullOrEmpty(message.Text)
-                ? $"{message.Caption} ({message.Type})"
-                : message.Text;
-        }
-
-        private InlineKeyboardMarkup GetArticleMarkup(Message message)
-        {
-            return new InlineKeyboardMarkup(
-                new InlineKeyboardButton
-                {
-                    Text = "View NSFW content",
-                    CallbackData = $"{message.Chat.Id}|{message.MessageId}"
-                });
+            try
+            {
+                await BotClient.AnswerInlineQueryAsync(
+                    inlineQueryId: e.InlineQuery.Id,
+                    results: results,
+                    isPersonal: true,
+                    cacheTime: 0);
+            }
+            catch (Exception exception)
+            {
+                Console.WriteLine(exception);
+            }
         }
 
         private async Task AddArticleThumb(IThumbnailInlineQueryResult article, PhotoSize messagePhoto)
         {
             var photo = await BotClient.GetFileAsync(messagePhoto.FileId);
-            article.ThumbUrl = "https://api.telegram.org/file/bot" + _token + "/" + photo.FilePath;
-            article.ThumbWidth = messagePhoto.Width;
-            article.ThumbHeight = messagePhoto.Height;
+            article.ThumbUrl = $"https://api.telegram.org/file/bot{_token}/{photo.FilePath}";
+            article.ThumbHeight = 100;
+            article.ThumbWidth = 100;
         }
 
         public void StartPolling()
