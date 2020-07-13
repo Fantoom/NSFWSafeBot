@@ -32,7 +32,8 @@ namespace NSFWSafeBot
             }
             finally
             {
-                _botClient.StopPolling();
+                if (_botClient != null)
+                    _botClient.StopPolling();
             }
         }
 
