@@ -38,7 +38,7 @@ namespace NSFWSafeBot
             if (!string.IsNullOrWhiteSpace(query))
             {
                 query = query.ToLower();
-                messages = messages.Where(msg => msg.Caption.ToLower().Contains(query));
+                messages = messages.Where(msg => msg.Message.Caption.ToLower().Contains(query));
             }
 
             return messages.ToList();

@@ -11,6 +11,7 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.InlineQueryResults.Abstractions;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace NSFWSafeBot
 {
@@ -58,39 +59,39 @@ namespace NSFWSafeBot
             await TryToForwardMessageAsync(callBackContent);
         }
 
-        private Task TryToForwardMessageAsync(CallbackQueryContent callBackContent)
+        private async Task TryToForwardMessageAsync(CallbackQueryContent callBackContent)
         {
             try
             {
-                return BotClient.ForwardMessageAsync(
-                    callBackContent.ChatId,
-                    callBackContent.ForwardToChatId,
-                    callBackContent.MessageId);
+                await BotClient.ForwardMessageAsync(
+                   callBackContent.ChatId,
+                   callBackContent.ForwardToChatId,
+                   callBackContent.MessageId);
             }
-            catch (ChatNotInitiatedException)
+            catch (ChatNotInitiatedException e)
             {
-                return BotClient.AnswerCallbackQueryAsync(
+                await BotClient.AnswerCallbackQueryAsync(
                     callBackContent.CallbackId,
                     "First write to the bot.",
                     true);
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                return BotClient.AnswerCallbackQueryAsync(
-                    callBackContent.CallbackId,
-                    "Unpredicted error happened.",
-                    true);
+                await BotClient.AnswerCallbackQueryAsync(
+                   callBackContent.CallbackId,
+                   "Unpredicted error happened.",
+                   true);
             }
         }
 
         private async void BotClient_OnMessage(object sender, MessageEventArgs e)
         {
-            if (string.IsNullOrEmpty(e.Message.Text) && e.Message.Photo is null)
+            if (string.IsNullOrEmpty(e.Message.Text) && e.Message.Photo is null && e.Message.Document is null)
             {
                 return;
             }
 
-            if (!IsCommand(e.Message) && e.Message.Photo != null)
+            if (!IsCommand(e.Message) && (e.Message.Photo != null || e.Message.Document != null))
             {
                 await DBController.AddMessageAsync(new ChatMessage(e.Message));
             }
@@ -132,8 +133,14 @@ namespace NSFWSafeBot
             uint resultId = 0;
             foreach (var userChatMessage in userMessages)
             {
-                var photo = await BotClient.GetFileAsync(userChatMessage.Photo.FileId);
-                var newArticle = new InlineQueryResultCachedPhoto(resultId.ToString(), photo.FileId);
+                var fileId = userChatMessage.Message.Photo is null ? userChatMessage.Message.Document.Thumb.FileId : userChatMessage.Message.Photo?[0].FileId;
+                var photo = await BotClient.GetFileAsync(fileId);
+                //var newArticle = new  (resultId.ToString(), photo.FileId);
+                var newArticle = new InlineQueryResultArticle(resultId.ToString(), userChatMessage.Message.Text + $"{userChatMessage.Message.Type.ToString()}", new InputTextMessageContent($"NSFW content sent by{e.InlineQuery.From.Username}"));
+                var markup = new InlineKeyboardMarkup(new InlineKeyboardButton { Text = "View NSFW content", CallbackData = $"{userChatMessage.Message.Chat.Id}|{userChatMessage.Message.MessageId}" });
+                newArticle.ReplyMarkup = markup;
+                newArticle.ThumbUrl = "https://i.pinimg.com/originals/7f/43/d8/7f43d8765519ca49dfddc7c1b7f53a3f.jpg";
+                //newArticle.InputMessageContent = new InputTextMessageContent($"NSFW content sent by{e.InlineQuery.From.Username}");
                 results.Add(newArticle);
                 resultId++;
             }
