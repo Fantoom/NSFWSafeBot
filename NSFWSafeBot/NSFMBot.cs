@@ -9,6 +9,7 @@ using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.InlineQueryResults.Abstractions;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -40,6 +41,15 @@ namespace NSFWSafeBot
                     Action = (msg) =>
                     {
                         BotClient.SendTextMessageAsync(msg.Chat.Id, "Write NSFW message to show in inline mode ");
+                    }
+                },
+                new Command
+                {
+                    CommandName = "cleaninline",
+                    Action = (msg) =>
+                    {
+                         DBController.DeleteAllMessagesByUserAsync(msg.From.Id);
+                         BotClient.SendTextMessageAsync(msg.Chat.Id, "Inline cleaned");
                     }
                 }
             };
@@ -86,14 +96,11 @@ namespace NSFWSafeBot
 
         private async void BotClient_OnMessage(object sender, MessageEventArgs e)
         {
-            if (string.IsNullOrEmpty(e.Message.Text) && e.Message.Photo is null && e.Message.Document is null)
-            {
-                return;
-            }
 
-            if (!IsCommand(e.Message) && (e.Message.Photo != null || e.Message.Document != null))
+            if (!IsCommand(e.Message) && (e.Message.Type == MessageType.Text || e.Message.Type == MessageType.Photo || e.Message.Type == MessageType.Video || e.Message.Type == MessageType.Audio || e.Message.Type == MessageType.Voice))
             {
                 await DBController.AddMessageAsync(new ChatMessage(e.Message));
+                await BotClient.SendTextMessageAsync(e.Message.Chat.Id, "Added");
             }
             else if (IsCommand(e.Message))
             {
@@ -133,16 +140,31 @@ namespace NSFWSafeBot
             uint resultId = 0;
             foreach (var userChatMessage in userMessages)
             {
-                var fileId = userChatMessage.Message.Photo is null ? userChatMessage.Message.Document.Thumb.FileId : userChatMessage.Message.Photo?[0].FileId;
-                var photo = await BotClient.GetFileAsync(fileId);
+                //var fileId = userChatMessage.Message.Photo is null ? userChatMessage.Message.Document.Thumb.FileId : userChatMessage.Message.Photo?[0].FileId;
+                //var photo = await BotClient.GetFileAsync(fileId);
                 //var newArticle = new  (resultId.ToString(), photo.FileId);
-                var newArticle = new InlineQueryResultArticle(resultId.ToString(), userChatMessage.Message.Text + $"{userChatMessage.Message.Type.ToString()}", new InputTextMessageContent($"NSFW content sent by{e.InlineQuery.From.Username}"));
+                dynamic inlineResult = userChatMessage.Message.Type switch
+                {
+                    MessageType.Text => new InlineQueryResultArticle(resultId.ToString(), "", null),
+                    MessageType.Photo => new InlineQueryResultCachedPhoto(resultId.ToString(), userChatMessage.Message.Photo?[0].FileId),
+                    MessageType.Video => new InlineQueryResultCachedVideo(resultId.ToString(), userChatMessage.Message.Video.FileId, ""),
+                    MessageType.Audio => new InlineQueryResultCachedAudio(resultId.ToString(), userChatMessage.Message.Audio.FileId),
+                    MessageType.Voice => new InlineQueryResultCachedVoice(resultId.ToString(), userChatMessage.Message.Voice.FileId, ""),
+                    MessageType.Document => new InlineQueryResultCachedDocument(resultId.ToString(), userChatMessage.Message.Document.FileId, ""),
+                    _ => null
+                };
+                if (userChatMessage.Message.Type == MessageType.Document)
+                {
+                    if ((bool)userChatMessage.Message.Document?.FileName.Contains(".gif"))
+                    {
+                        inlineResult = new InlineQueryResultCachedGif(resultId.ToString(), userChatMessage.Message.Document.FileId);
+                    }
+                }
                 var markup = new InlineKeyboardMarkup(new InlineKeyboardButton { Text = "View NSFW content", CallbackData = $"{userChatMessage.Message.Chat.Id}|{userChatMessage.Message.MessageId}" });
-                newArticle.ReplyMarkup = markup;
-                //TODO fix thumb
-                //ThumbUrl = "https://i.pinimg.com/originals/7f/43/d8/7f43d8765519ca49dfddc7c1b7f53a3f.jpg"; // for test
-                //newArticle.InputMessageContent = new InputTextMessageContent($"NSFW content sent by{e.InlineQuery.From.Username}");
-                results.Add(newArticle);
+                inlineResult.ReplyMarkup = markup;
+                inlineResult.Title = $"{userChatMessage.Message.Text} ({userChatMessage.Message.Type.ToString()})";
+                inlineResult.InputMessageContent = new InputTextMessageContent($"NSFW content sent by {e.InlineQuery.From.Username}");
+                results.Add(inlineResult);
                 resultId++;
             }
 

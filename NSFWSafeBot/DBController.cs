@@ -58,5 +58,9 @@ namespace NSFWSafeBot
         {
             return Task.Run(() => DeleteMessageById(chatId, messageId));
         }
+        public static Task<int> DeleteAllMessagesByUserAsync(int userId)
+        {
+            return Task.Run(() => Messages.DeleteMany(x => x.UserId == userId));
+        }
     }
 }

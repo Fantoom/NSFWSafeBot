@@ -17,7 +17,7 @@ namespace NSFWSafeBot
                 var config = ReadConfigFromJsonFile();
                 _botClient = new NsfmBot(config.Token);
                 _botClient.StartPolling();
-
+                Console.WriteLine("Bot started");
                 while (true)
                 {
                     if (Console.ReadLine() == "!")
